@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
 
 const userSchema = new mongoose.Schema({
   name: { 
@@ -65,13 +64,5 @@ const userSchema = new mongoose.Schema({
   assignedRegions: [{ type: String }]
 }, { timestamps: true });
 
-// JWT generation method
-userSchema.methods.generateAuthToken = function () {
-  return jwt.sign(
-    { id: this._id, role: this.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-};
 
 module.exports = mongoose.model('User', userSchema);

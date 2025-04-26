@@ -134,7 +134,9 @@ exports.registerUser = async (req, res) => {
     await user.save();
 
     // ✅ Generate token
-    const token = user.generateAuthToken();
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '7d'
+    })
 
     // ✅ Set cookie and respond
     res.cookie('token', token, {
