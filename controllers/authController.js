@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { z } = require('zod');
 
@@ -8,15 +9,27 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum([
-    'super-admin',
+    'user'
+  ]).default('user'),
+});
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+const updateUserSchema = z.object({
+  role: z.enum([
+    'user',
+    'admin',
     'country-admin',
     'state-admin',
     'regional-admin',
     'district-admin',
     'block-admin',
-    'area-admin',
-    'user'
-  ]),
+    'area-admin'
+  ]).optional(),
+
   designation: z.enum([
     'board-of-director',
     'executive-director',
@@ -59,7 +72,9 @@ const registerSchema = z.object({
     'volunteer',
     'field-coordinator'
   ]).optional(),
-  level: z.number().min(1).max(12).default(1),
+
+  level: z.number().min(1).max(12).optional(),
+
   geo: z.object({
     country: z.string(),
     state: z.string().optional(),
@@ -67,13 +82,9 @@ const registerSchema = z.object({
     district: z.string().optional(),
     block: z.string().optional(),
     area: z.string().optional(),
-  }),
-  assignedRegions: z.array(z.string()).optional()
-});
+  }).optional(),
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  assignedRegions: z.array(z.string()).optional()
 });
 
 // Cookie configuration
@@ -88,7 +99,7 @@ const cookieOptions = {
 // Register a new user
 exports.registerUser = async (req, res) => {
   try {
-    // Validate request body
+    // ✅ Validate request body
     const result = registerSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({
@@ -98,9 +109,9 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    const { email, role } = result.data;
+    const { name, email, password } = result.data;
 
-    // Check if user already exists
+    // ✅ Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -109,36 +120,37 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    // Authorization check for admin creation
-    if (role !== 'user' && req.user?.role !== 'super-admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only super admins can create admin users'
-      });
-    }
+    // ✅ Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
-    const user = new User(result.data);
+    // ✅ Create new user with default role
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'user'
+    });
+
     await user.save();
 
-    // Generate token
+    // ✅ Generate token
     const token = user.generateAuthToken();
 
-    // Set cookie and respond
-    res.cookie('token', token, cookieOptions)
-       .status(201)
-       .json({
-         success: true,
-         user: {
-           id: user._id,
-           name: user.name,
-           email: user.email,
-           role: user.role,
-           designation: user.designation,
-           level: user.level,
-           geo: user.geo
-         }
-       });
+    // ✅ Set cookie and respond
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    }).status(201).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
 
   } catch (error) {
     console.error('Registration error:', error);
@@ -149,7 +161,6 @@ exports.registerUser = async (req, res) => {
     });
   }
 };
-
 // Login user
 exports.loginUser = async (req, res) => {
   try {
@@ -174,8 +185,8 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -255,7 +266,7 @@ exports.logoutUser = (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     // Authorization - users can only update their own profile
-    if (req.user?.id !== req.params.id && req.user?.role !== 'super-admin') {
+    if (req.user?.id !== req.params.id && req.user?.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this user'
@@ -286,6 +297,59 @@ exports.updateUser = async (req, res) => {
       success: false,
       message: 'Failed to update user',
       error: error.message
+    });
+  }
+};
+
+exports.updateUserController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate input
+    const result = updateUserSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: result.error.errors,
+      });
+    }
+
+    const updates = result.data;
+
+    // Find user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Update only allowed fields
+    Object.assign(user, updates);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        designation: user.designation,
+        level: user.level,
+        geo: user.geo,
+        assignedRegions: user.assignedRegions,
+      },
+    });
+  } catch (error) {
+    console.error('Update user error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user',
+      error: error.message,
     });
   }
 };

@@ -79,7 +79,7 @@ exports.requirePermission = (requiredPermission) => {
     }
 
     // Super admin has all permissions
-    if (req.user.role === 'super-admin') {
+    if (req.user.role === 'admin') {
       return next();
     }
 
@@ -106,7 +106,7 @@ exports.requireGeoAccess = (requiredLevel) => {
     }
 
     // Super admin has global access
-    if (req.user.role === 'super-admin') {
+    if (req.user.role === 'admin') {
       return next();
     }
 
@@ -147,13 +147,13 @@ exports.requireHigherRole = () => {
     }
 
     // Super admin can modify anyone
-    if (req.user.role === 'super-admin') {
+    if (req.user.role === 'admin') {
       return next();
     }
 
     // Check if current user's role is higher in hierarchy than target role
     const roleHierarchy = [
-      'super-admin',
+      'admin',
       'country-admin',
       'state-admin',
       'regional-admin',

@@ -16,39 +16,62 @@ const {
 
 const router = express.Router();
 
-// Public routes (no authentication required)
-router.post("/register", registerUser);
+// Public routes
+router.post("/register", registerUser); // Only registers normal users (role: 'user')
 router.post("/login", loginUser);
 router.get("/logout", logoutUser);
+router.get("/me", authenticate, getUserDetails);
+router.put("/update", authenticate, requireRole("admin"), updateUser);
 
-// Protected routes (require authentication)
+// Authenticated user routes
 router.get("/profile", authenticate, getUserDetails);
-router.put("/profile", authenticate, updateUser);
+router.put("/profile", authenticate, updateUser); // Admin can update users' roles, geo, level, etc.
 
-// Role-based protected routes
-router.get("/admin/dashboard", authenticate, requireRole(["super-admin", "country-admin"]), (req, res) => {
-  res.json({ message: "Admin dashboard accessed successfully" });
-});
+// Role-based example
+router.get(
+  "/admin/dashboard", 
+  authenticate, 
+  requireRole("admin", "country-admin"), 
+  (req, res) => {
+    res.json({ message: "Admin dashboard accessed successfully" });
+  }
+);
 
-// Permission-based protected routes
-router.get("/reports", authenticate, requirePermission("view-reports"), (req, res) => {
-  res.json({ message: "Reports accessed successfully" });
-});
+// Permission-based example
+router.get(
+  "/reports", 
+  authenticate, 
+  requirePermission("view-reports"), 
+  (req, res) => {
+    res.json({ message: "Reports accessed successfully" });
+  }
+);
 
-// Geographic access protected routes
-router.get("/regional-data", authenticate, requireGeoAccess("region"), (req, res) => {
-  res.json({ message: "Regional data accessed successfully" });
-});
+// Geo-level access example
+router.get(
+  "/regional-data", 
+  authenticate, 
+  requireGeoAccess("region"), 
+  (req, res) => {
+    res.json({ message: "Regional data accessed successfully" });
+  }
+);
 
-// Admin management routes
-router.post("/admins", authenticate, requireHigherRole(), (req, res) => {
-  res.json({ message: "Admin created successfully" });
-});
+// Admin management (only higher roles can create admins or elevate others)
+router.post(
+  "/admins", 
+  authenticate, 
+  requireHigherRole(), 
+  (req, res) => {
+    res.json({ message: "Admin created successfully" });
+  }
+);
 
-// Complex combined protection example
-router.get("/country-dashboard", 
+// Complex example: All protections combined
+router.get(
+  "/country-dashboard", 
   authenticate,
-  requireRole(["country-admin"]),
+  requireRole("country-admin"),
   requireGeoAccess("country"),
   requirePermission("view-dashboard"),
   (req, res) => {
