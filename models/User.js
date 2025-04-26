@@ -45,7 +45,8 @@ const userSchema = new mongoose.Schema({
       'state-program-manager', 'state-coordinator', 'state-officer', 'regional-program-manager',
       'regional-coordinator', 'regional-officer', 'district-program-manager', 'district-coordinator',
       'district-executive', 'counsellor', 'cluster-coordinator', 'volunteer', 'field-coordinator'
-    ]
+    ],
+    default: null
   },
   level: { 
     type: Number, 
@@ -54,15 +55,75 @@ const userSchema = new mongoose.Schema({
     default: 1 
   },
   geo: {
-    country: { type: String },
-    state: { type: String },
-    region: { type: String },
-    district: { type: String },
-    block: { type: String },
-    area: { type: String }
+    country: { type: String, default: null },
+    state: { type: String, default: null },
+    region: { type: String, default: null },
+    district: { type: String, default: null },
+    block: { type: String, default: null },
+    area: { type: String, default: null }
   },
-  assignedRegions: [{ type: String }]
+  permissions: [{ type: String }],
+  assignedRegions: [{ type: String, default: [] }]
 }, { timestamps: true });
 
+// Add permissions based on role before saving
+userSchema.pre('save', function(next) {
+  if (this.role && !this.permissions) {
+    const permissionsMap = {
+      'admin': [
+        'create-country',
+        'approve-sub-admins',
+        'manage-master-data',
+        'design-report-formats',
+        'manage-users',
+        'view-reports',
+        'manage-events',
+        'manage-jobs',
+        'manage-blogs',
+        'manage-causes',
+        'manage-crowd-funding',
+        'manage-forum',
+        'manage-shop',
+        'manage-content',
+        'view-audit-logs'
+      ],
+      'country-admin': [
+        'approve-sub-admins',
+        'manage-users',
+        'view-reports',
+        'manage-events',
+        'manage-jobs',
+        'manage-blogs',
+        'manage-causes',
+        'manage-content'
+      ],
+      'state-admin': [
+        'manage-users',
+        'view-reports',
+        'manage-events',
+        'manage-jobs',
+        'manage-blogs'
+      ],
+      'regional-admin': [
+        'manage-users',
+        'view-reports',
+        'manage-events'
+      ],
+      'district-admin': [
+        'manage-users',
+        'view-reports'
+      ],
+      'block-admin': [
+        'manage-users'
+      ],
+      'area-admin': [
+        'manage-users'
+      ],
+      'user': []
+    };
+    this.permissions = permissionsMap[this.role] || [];
+  }
+  next();
+});
 
 module.exports = mongoose.model('User', userSchema);
