@@ -9,6 +9,7 @@ connectDB();
 // API Routes
 const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 
 // Initialize Express app
 const app = express();
@@ -35,6 +36,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/event', eventRoutes);
 
 
 // Error handling middleware
