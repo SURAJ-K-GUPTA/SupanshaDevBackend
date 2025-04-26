@@ -6,6 +6,10 @@ const mongoose = require('mongoose');
 const connectDB = require('./db/db');
 connectDB();
 
+// API Routes
+const authRoutes = require('./routes/authRoutes');
+const blogRoutes = require('./routes/blogRoutes');
+
 // Initialize Express app
 const app = express();
 
@@ -27,11 +31,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// API Routes
-const authRoutes = require('./routes/authRoutes');
 
 
 app.use('/api/auth', authRoutes);
+app.use('/api/blog', blogRoutes);
 
 
 // Error handling middleware
