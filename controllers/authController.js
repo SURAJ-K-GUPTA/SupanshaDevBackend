@@ -8,6 +8,7 @@ const registerSchema = z.object({
   name: z.string().min(3).max(50),
   email: z.string().email(),
   password: z.string().min(6),
+  accountType: z.enum(['member', 'organization']).default('member'),
   role: z.enum([
     'user'
   ]).default('user'),
@@ -109,7 +110,7 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    const { name, email, password } = result.data;
+    const { name, email, password, accountType } = result.data;
 
     // ✅ Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -128,7 +129,9 @@ exports.registerUser = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: 'user'
+      role: 'user',
+      accountType
+
     });
 
     await user.save();
@@ -250,6 +253,23 @@ exports.getUserDetails = async (req, res) => {
       message: 'Failed to fetch user details',
       error: error.message
     });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { accountType } = req.query; // ?accountType=member or organization
+
+    let query = {};
+    if (accountType) {
+      query.accountType = accountType;
+    }
+
+    const users = await User.find(query).sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch users" });
   }
 };
 

@@ -19,6 +19,14 @@ const userSchema = new mongoose.Schema({
     required: true, 
     minlength: 6 
   },
+
+  // Add a field to choose between Member or Organization
+  accountType: {
+    type: String,
+    required: true,
+    enum: ['member', 'organization']
+  },
+
   role: { 
     type: String, 
     required: true,
@@ -34,6 +42,7 @@ const userSchema = new mongoose.Schema({
     ],
     default: 'user'
   },
+
   designation: {
     type: String,
     enum: [
@@ -48,12 +57,14 @@ const userSchema = new mongoose.Schema({
     ],
     default: null
   },
+
   level: { 
     type: Number, 
     min: 1, 
     max: 12, 
     default: 1 
   },
+
   geo: {
     country: { type: String, default: null },
     state: { type: String, default: null },
@@ -62,13 +73,15 @@ const userSchema = new mongoose.Schema({
     block: { type: String, default: null },
     area: { type: String, default: null }
   },
-  permissions: [{ type: String }],
+
+  permissions: [{ type: String, default: [] }],
+
   assignedRegions: [{ type: String, default: [] }]
 }, { timestamps: true });
 
-// Add permissions based on role before saving
+// Fix permission auto-assignment
 userSchema.pre('save', function(next) {
-  if (this.role && !this.permissions) {
+  if (this.role) {
     const permissionsMap = {
       'admin': [
         'create-country',
@@ -121,7 +134,11 @@ userSchema.pre('save', function(next) {
       ],
       'user': []
     };
-    this.permissions = permissionsMap[this.role] || [];
+
+    // Assign permissions ONLY if permissions array is empty
+    if (!this.permissions || this.permissions.length === 0) {
+      this.permissions = permissionsMap[this.role] || [];
+    }
   }
   next();
 });

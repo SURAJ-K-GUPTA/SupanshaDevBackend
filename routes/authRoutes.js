@@ -4,7 +4,8 @@ const {
   registerUser, 
   getUserDetails,
   logoutUser,
-  updateUser
+  updateUser,
+  getAllUsers
 } = require("../controllers/authController");
 const { 
   authenticate, 
@@ -20,6 +21,8 @@ const router = express.Router();
 router.post("/register", registerUser); // Only registers normal users (role: 'user')
 router.post("/login", loginUser);
 router.get("/logout", logoutUser);
+
+router.get("/users", authenticate,requireRole("admin"), getAllUsers)
 router.get("/me", authenticate, getUserDetails);
 router.put("/update", authenticate, requireRole("admin"), updateUser);
 
