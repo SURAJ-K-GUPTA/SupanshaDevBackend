@@ -11,6 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const jobRoutes = require('./routes/jobRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 
 // Initialize Express app
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/event', eventRoutes);
 app.use('/api/job', jobRoutes);
+app.use('/api/contact', contactRoutes);
 
 
 // Error handling middleware
