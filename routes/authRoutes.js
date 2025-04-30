@@ -20,7 +20,7 @@ const router = express.Router();
 // Public routes
 router.post("/register", registerUser); // Only registers normal users (role: 'user')
 router.post("/login", loginUser);
-router.get("/logout", logoutUser);
+router.post("/logout", logoutUser);
 
 router.get("/users", authenticate,requireRole("admin"), getAllUsers)
 router.get("/me", authenticate, getUserDetails);

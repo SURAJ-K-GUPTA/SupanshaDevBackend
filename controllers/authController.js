@@ -275,16 +275,27 @@ exports.getAllUsers = async (req, res) => {
 
 // Logout user
 exports.logoutUser = (req, res) => {
-  res.clearCookie('token', {
-    path: '/',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-  }).json({
-    success: true,
-    message: 'Logged out successfully'
-  });
+  try {
+    res.clearCookie('token', {
+      httpOnly: true,
+      sameSite: 'Lax', // Or 'Strict' / 'None' if using cross-site
+      secure: process.env.NODE_ENV === 'production', // only in prod
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to logout',
+      error: error.message,
+    });
+  }
 };
+
 
 // Update user details
 exports.updateUser = async (req, res) => {
