@@ -7,15 +7,18 @@ const {
     updateJob, 
     deleteJob 
 } = require('../controllers/jobController');
-const { authenticate, requireRole } = require('../middlewares/authMiddleware');
+const { authenticate, requireModulePermission } = require('../middlewares/authMiddleware');
+
+// Protected routes
+router.use(authenticate);
 
 // Public
-router.get('/', getAllJobs);
+router.get('/', requireModulePermission('jobs', 'read'), getAllJobs);
 router.get('/:id', getSingleJob);
 
 // Admin/Organizer routes
-router.post('/', authenticate, requireRole('admin', 'organizer'), createJob);
-router.put('/:id', authenticate, requireRole('admin', 'organizer'), updateJob);
-router.delete('/:id', authenticate, requireRole('admin'), deleteJob);
+router.post('/', requireModulePermission('jobs', 'create'), createJob);
+router.put('/:id', requireModulePermission('jobs', 'update'), updateJob);
+router.delete('/:id', requireModulePermission('jobs', 'delete'), deleteJob);
 
 module.exports = router;

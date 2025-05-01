@@ -18,12 +18,15 @@ const {
 const router = express.Router();
 
 // Public routes
+
+// Auth routes
 router.post("/register", registerUser); // Only registers normal users (role: 'user')
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
 
-router.get("/users", authenticate,requireRole("admin"), getAllUsers)
 router.get("/me", authenticate, getUserDetails);
+
+router.get("/users", authenticate,requireRole("admin"), getAllUsers)
 router.put("/update", authenticate, requireRole("admin"), updateUser);
 
 // Authenticated user routes

@@ -8,16 +8,19 @@ const {
     updateEvent, 
     deleteEvent 
 } = require('../controllers/eventController');
-const { authenticate, requireRole } = require('../middlewares/authMiddleware');
+const { authenticate, requireModulePermission } = require('../middlewares/authMiddleware');
+
+// Protected routes
+router.use(authenticate);
 
 // Public Routes
-router.get('/', getAllEvents);
-router.get('/:id', getEventById);
+router.get('/', requireModulePermission('events', 'read'), getAllEvents);
+router.get('/:id', requireModulePermission('events', 'read'), getEventById);
 
 // Admin/Organizer Routes
-router.post('/', authenticate, requireRole('admin', 'organizer'), createEvent);
-router.patch('/:id/approve', authenticate, requireRole('admin'), approveEvent);
-router.put('/:id', authenticate, requireRole('admin', 'organizer'), updateEvent);
-router.delete('/:id', authenticate, requireRole('admin'), deleteEvent);
+router.post('/', requireModulePermission('events', 'create'), createEvent);
+router.patch('/:id/approve', requireModulePermission('events', 'update'), approveEvent);
+router.put('/:id', requireModulePermission('events', 'update'), updateEvent);
+router.delete('/:id', requireModulePermission('events', 'delete'), deleteEvent);
 
 module.exports = router;

@@ -26,6 +26,10 @@ exports.authenticate = async (req, res, next) => {
       });
     }
 
+    if (user.status !== 'active') {
+      return res.status(403).json({ success: false, error: 'User account is inactive' });
+    }
+
     req.user = {
       id: user._id,
       role: user.role,
@@ -45,6 +49,18 @@ exports.authenticate = async (req, res, next) => {
   }
 };
 
+// Role hierarchy
+const roleHierarchy = {
+  'admin': 0,
+  'country-admin': 1,
+  'state-admin': 2,
+  'regional-admin': 3,
+  'district-admin': 4,
+  'block-admin': 5,
+  'area-admin': 6,
+  'user': 7
+};
+
 // Role-based access control middleware
 exports.requireRole = (...allowedRoles) => {
   return (req, res, next) => {
@@ -55,21 +71,33 @@ exports.requireRole = (...allowedRoles) => {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "Insufficient privileges",
-        requiredRoles: allowedRoles,
-        yourRole: req.user.role
-      });
+    // Check if user's role is in allowed roles
+    if (allowedRoles.includes(req.user.role)) {
+      return next();
     }
 
-    next();
+    // Check role hierarchy
+    const userRoleLevel = roleHierarchy[req.user.role];
+    const hasHigherRole = allowedRoles.some(role => {
+      const allowedRoleLevel = roleHierarchy[role];
+      return userRoleLevel <= allowedRoleLevel;
+    });
+
+    if (hasHigherRole) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: "Insufficient privileges",
+      requiredRoles: allowedRoles,
+      yourRole: req.user.role
+    });
   };
 };
 
 // Permission-based access control middleware
-exports.requirePermission = (requiredPermission) => {
+exports.requirePermission = (module) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ 
@@ -83,11 +111,25 @@ exports.requirePermission = (requiredPermission) => {
       return next();
     }
 
-    if (!req.user.permissions?.includes(requiredPermission)) {
+    // Map HTTP methods to permission types
+    const methodToPermission = {
+      GET: 'read',
+      POST: 'create',
+      PUT: 'update',
+      PATCH: 'update',
+      DELETE: 'delete'
+    };
+
+    const requiredPermission = methodToPermission[req.method];
+    if (!requiredPermission) {
+      return next(); // Allow if method doesn't require specific permission
+    }
+
+    const modulePermissions = req.user.permissions?.[module];
+    if (!modulePermissions || !modulePermissions[requiredPermission]) {
       return res.status(403).json({
         success: false,
-        message: "Permission denied",
-        requiredPermission
+        message: `Permission denied: ${requiredPermission} access required for ${module} module`
       });
     }
 
@@ -175,5 +217,65 @@ exports.requireHigherRole = () => {
     }
 
     next();
+  };
+};
+
+// Middleware to check module-specific permissions
+exports.requireModulePermission = (module, action) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+
+      // Admin has all permissions
+      if (req.user.role === 'admin') {
+        return next();
+      }
+
+      const user = await User.findById(req.user._id).select('permissions');
+      const modulePermissions = user.permissions.get(module);
+
+      if (!modulePermissions || !modulePermissions[action]) {
+        return res.status(403).json({
+          success: false,
+          error: `Permission denied: ${action} access required for ${module} module`
+        });
+      }
+
+      next();
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  };
+};
+
+// Middleware to check if user has any access to a module
+exports.hasModuleAccess = (module) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+
+      // Admin has all permissions
+      if (req.user.role === 'admin') {
+        return next();
+      }
+
+      const user = await User.findById(req.user._id).select('permissions');
+      const modulePermissions = user.permissions.get(module);
+
+      if (!modulePermissions) {
+        return res.status(403).json({
+          success: false,
+          error: `Access denied: No permissions for ${module} module`
+        });
+      }
+
+      next();
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   };
 };

@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+// Define the Cause schema
+const causeSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true, unique: true },
+  description: { type: String, trim: true },
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true });
+
+// Export Cause model
+const Cause = mongoose.model('Cause', causeSchema);
+
+// Define the Donation schema
 const donationSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: {
@@ -26,4 +37,7 @@ const donationSchema = new mongoose.Schema({
   panCardNumber: { type: String, default: null }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Donation', donationSchema);
+// Export Donation model
+const Donation = mongoose.model('Donation', donationSchema);
+
+module.exports = { Donation, Cause };

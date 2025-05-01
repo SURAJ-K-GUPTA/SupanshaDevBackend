@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: { 
@@ -43,6 +44,17 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
 
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
+
+  permissions: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+
   designation: {
     type: String,
     enum: [
@@ -74,70 +86,82 @@ const userSchema = new mongoose.Schema({
     area: { type: String, default: null }
   },
 
-  permissions: [{ type: String, default: [] }],
+  assignedRegions: [{ type: String, default: [] }],
 
-  assignedRegions: [{ type: String, default: [] }]
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 }, { timestamps: true });
 
-// Fix permission auto-assignment
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
+
+// Set default permissions based on role
 userSchema.pre('save', function(next) {
-  if (this.role) {
-    const permissionsMap = {
-      'admin': [
-        'create-country',
-        'approve-sub-admins',
-        'manage-master-data',
-        'design-report-formats',
-        'manage-users',
-        'view-reports',
-        'manage-events',
-        'manage-jobs',
-        'manage-blogs',
-        'manage-causes',
-        'manage-crowd-funding',
-        'manage-forum',
-        'manage-shop',
-        'manage-content',
-        'view-audit-logs'
-      ],
-      'country-admin': [
-        'approve-sub-admins',
-        'manage-users',
-        'view-reports',
-        'manage-events',
-        'manage-jobs',
-        'manage-blogs',
-        'manage-causes',
-        'manage-content'
-      ],
-      'state-admin': [
-        'manage-users',
-        'view-reports',
-        'manage-events',
-        'manage-jobs',
-        'manage-blogs'
-      ],
-      'regional-admin': [
-        'manage-users',
-        'view-reports',
-        'manage-events'
-      ],
-      'district-admin': [
-        'manage-users',
-        'view-reports'
-      ],
-      'block-admin': [
-        'manage-users'
-      ],
-      'area-admin': [
-        'manage-users'
-      ],
-      'user': []
+  if (this.isNew || this.isModified('role')) {
+    const defaultPermissions = {
+      'admin': {
+        'dashboard': { read: true, create: true, update: true, delete: true },
+        'certificates': { read: true, create: true, update: true, delete: true },
+        'reports': { read: true, create: true, update: true, delete: true },
+        'formats': { read: true, create: true, update: true, delete: true },
+        'events': { read: true, create: true, update: true, delete: true },
+        'jobs': { read: true, create: true, update: true, delete: true },
+        'blogs': { read: true, create: true, update: true, delete: true },
+        'causes': { read: true, create: true, update: true, delete: true },
+        'crowd-funding': { read: true, create: true, update: true, delete: true },
+        'forum': { read: true, create: true, update: true, delete: true },
+        'shop': { read: true, create: true, update: true, delete: true }
+      },
+      'country-admin': {
+        'dashboard': { read: true, create: false, update: false, delete: false },
+        'certificates': { read: true, create: true, update: true, delete: false },
+        'reports': { read: true, create: true, update: true, delete: false },
+        'formats': { read: true, create: false, update: false, delete: false },
+        'events': { read: true, create: true, update: true, delete: false },
+        'jobs': { read: true, create: true, update: true, delete: false },
+        'blogs': { read: true, create: true, update: true, delete: false },
+        'causes': { read: true, create: true, update: true, delete: false },
+        'crowd-funding': { read: true, create: true, update: true, delete: false },
+        'forum': { read: true, create: true, update: true, delete: false },
+        'shop': { read: true, create: false, update: false, delete: false }
+      },
+      'state-admin': {
+        'dashboard': { read: true, create: false, update: false, delete: false },
+        'certificates': { read: true, create: true, update: true, delete: false },
+        'reports': { read: true, create: true, update: true, delete: false },
+        'formats': { read: true, create: false, update: false, delete: false },
+        'events': { read: true, create: true, update: true, delete: false },
+        'jobs': { read: true, create: true, update: true, delete: false },
+        'blogs': { read: true, create: true, update: true, delete: false },
+        'causes': { read: true, create: true, update: true, delete: false },
+        'crowd-funding': { read: true, create: true, update: true, delete: false },
+        'forum': { read: true, create: true, update: true, delete: false },
+        'shop': { read: true, create: false, update: false, delete: false }
+      },
+      'user': {
+        'dashboard': { read: true, create: false, update: false, delete: false },
+        'certificates': { read: true, create: false, update: false, delete: false },
+        'reports': { read: true, create: false, update: false, delete: false },
+        'formats': { read: true, create: false, update: false, delete: false },
+        'events': { read: true, create: false, update: false, delete: false },
+        'jobs': { read: true, create: false, update: false, delete: false },
+        'blogs': { read: true, create: false, update: false, delete: false },
+        'causes': { read: true, create: false, update: false, delete: false },
+        'crowd-funding': { read: true, create: false, update: false, delete: false },
+        'forum': { read: true, create: true, update: true, delete: false },
+        'shop': { read: true, create: false, update: false, delete: false }
+      }
     };
 
-    // Assign permissions ONLY if permissions array is empty
-    if (!this.permissions || this.permissions.length === 0) {
-      this.permissions = permissionsMap[this.role] || [];
+    if (defaultPermissions[this.role]) {
+      this.permissions = defaultPermissions[this.role];
     }
   }
   next();
