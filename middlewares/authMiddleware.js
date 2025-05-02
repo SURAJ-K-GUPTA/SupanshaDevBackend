@@ -30,14 +30,7 @@ exports.authenticate = async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'User account is inactive' });
     }
 
-    req.user = {
-      id: user._id,
-      role: user.role,
-      level: user.level,
-      geo: user.geo,
-      designation: user.designation,
-      permissions: user.permissions
-    };
+    req.user = user;
 
     next();
   } catch (error) {
@@ -249,7 +242,7 @@ exports.requireModulePermission = (module, action) => {
       }
 
       const user = await User.findById(req.user._id).select('permissions');
-      const modulePermissions = user.permissions.get(module);
+      const modulePermissions = user.permissions[module];
 
       if (!modulePermissions || !modulePermissions[action]) {
         return res.status(403).json({

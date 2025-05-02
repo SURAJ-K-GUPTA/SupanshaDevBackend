@@ -2,8 +2,11 @@ const express = require("express");
 const { 
   getVolunteers, 
   createVolunteer, 
+  updateVolunteerStatus, 
   updateVolunteer, 
-  deleteVolunteer 
+  deleteVolunteer, 
+  addVolunteerEvent, 
+  updateVolunteerNotes 
 } = require("../controllers/volunteerController");
 const { authenticate, requireModulePermission } = require("../middlewares/authMiddleware");
 
@@ -18,10 +21,19 @@ router.get("/", requireModulePermission("volunteers", "read"), getVolunteers);
 // Create new volunteer
 router.post("/", requireModulePermission("volunteers", "create"), createVolunteer);
 
-// Update volunteer
+// Update volunteer status
+router.patch("/:id/status", requireModulePermission("volunteers", "update"), updateVolunteerStatus);
+
+// Update volunteer details
 router.put("/:id", requireModulePermission("volunteers", "update"), updateVolunteer);
 
 // Delete volunteer
 router.delete("/:id", requireModulePermission("volunteers", "delete"), deleteVolunteer);
+
+// Add volunteer event
+router.post("/:id/events", requireModulePermission("volunteers", "update"), addVolunteerEvent);
+
+// Update volunteer notes
+router.patch("/:id/notes", requireModulePermission("volunteers", "update"), updateVolunteerNotes);
 
 module.exports = router; 
