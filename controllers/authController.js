@@ -149,12 +149,7 @@ exports.registerUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     }).status(201).json({
       success: true,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user
     });
 
   } catch (error) {
@@ -205,19 +200,14 @@ exports.loginUser = async (req, res) => {
     });
 
     // Set cookie and respond
+    // send user without password
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;
     res.cookie('token', token, cookieOptions)
        .status(200)
        .json({
          success: true,
-         user: {
-           id: user._id,
-           name: user.name,
-           email: user.email,
-           role: user.role,
-           designation: user.designation,
-           level: user.level,
-           geo: user.geo
-         }
+         user: userWithoutPassword
        });
 
   } catch (error) {
@@ -241,9 +231,12 @@ exports.getUserDetails = async (req, res) => {
       });
     }
 
+    // send user without password
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;
     res.status(200).json({
       success: true,
-      user
+      user: userWithoutPassword
     });
 
   } catch (error) {
@@ -310,9 +303,13 @@ exports.updateUser = async (req, res) => {
       });
     }
 
+    // send user without password
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;  
+
     res.status(200).json({
       success: true,
-      user
+      user: userWithoutPassword
     });
 
   } catch (error) {
@@ -354,19 +351,14 @@ exports.updateUserController = async (req, res) => {
     Object.assign(user, updates);
     await user.save();
 
+    // send user without password
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;
+
     res.status(200).json({
       success: true,
       message: 'User updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        designation: user.designation,
-        level: user.level,
-        geo: user.geo,
-        assignedRegions: user.assignedRegions,
-      },
+      user: userWithoutPassword,
     });
   } catch (error) {
     console.error('Update user error:', error.message);
