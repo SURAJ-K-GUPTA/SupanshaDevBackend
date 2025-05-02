@@ -117,19 +117,34 @@ exports.requirePermission = (module) => {
       POST: 'create',
       PUT: 'update',
       PATCH: 'update',
-      DELETE: 'delete'
+      DELETE: 'delete',
+      HEAD: 'read',
+      OPTIONS: 'read'
     };
 
     const requiredPermission = methodToPermission[req.method];
     if (!requiredPermission) {
-      return next(); // Allow if method doesn't require specific permission
+      return res.status(405).json({
+        success: false,
+        message: `Method ${req.method} not allowed`
+      });
     }
 
-    const modulePermissions = req.user.permissions?.[module];
-    if (!modulePermissions || !modulePermissions[requiredPermission]) {
+    // Check if module exists in user's permissions
+    if (!req.user.permissions || !req.user.permissions[module]) {
       return res.status(403).json({
         success: false,
-        message: `Permission denied: ${requiredPermission} access required for ${module} module`
+        message: `No permissions found for module: ${module}`
+      });
+    }
+
+    const modulePermissions = req.user.permissions[module];
+    if (!modulePermissions[requiredPermission]) {
+      return res.status(403).json({
+        success: false,
+        message: `Permission denied: ${requiredPermission} access required for ${module} module`,
+        requiredPermission,
+        module
       });
     }
 
